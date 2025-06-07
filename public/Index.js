@@ -91,25 +91,17 @@ function addTask() {
     return;
   }
 
-  const tbody = document.querySelector("#taskTable tbody");
-  const newRow = tbody.insertRow();
-  const rowCount = tbody.rows.length - 1; // Không tính dòng nhập
-  const id = rowCount;
+  if (timeToPosition(end) <= timeToPosition(start)) {
+    alert("Thời gian kết thúc phải sau thời gian bắt đầu!");
+    return;
+  }
 
-  newRow.dataset.id = id;
-  newRow.innerHTML = `
-    <td>${id}</td>
-    <td>${name}</td>
-    <td>${start}</td>
-    <td>${end}</td>
-    <td>${resource}</td>
-    <td><span class="delete-btn" onclick="deleteRow(this)">❌</span></td>
-  `;
+  const id = tasks.length + 1;
+  tasks.push({ id, name, start, end, resource });
+  saveTasksToServer();
+  renderTaskTable();
+  renderCalendar();
 
-  // Vẽ task
-  createTaskElement(id, name, start, end);
-
-  // Reset input
   document.getElementById("nameInput").value = "";
   document.getElementById("startInput").value = "";
   document.getElementById("endInput").value = "";
@@ -150,9 +142,10 @@ function renderTaskTable() {
   `;
 
   tasks.forEach((task, index) => {
+    task.id = index + 1;
     const row = tbody.insertRow();
     row.innerHTML = `
-      <td>${index + 1}</td>
+      <td>${task.id}</td>
       <td>${task.name}</td>
       <td>${task.start}</td>
       <td>${task.end}</td>
@@ -166,8 +159,8 @@ function renderCalendar() {
   const calendar = document.getElementById("calendar");
   calendar.innerHTML = "";
 
-  tasks.forEach((task, index) => {
-    createTaskElement(index + 1, task.name, task.start, task.end);
+  tasks.forEach((task) => {
+    createTaskElement(task.id, task.name, task.start, task.end, task.resource);
   });
 }
 
@@ -205,7 +198,7 @@ function timeToPosition(timeStr) {
   return hour * 60 + minute;
 }
 
-function createTaskElement(id, name, start, end) {
+function createTaskElement(id, name, start, end, resource) {
   const calendar = document.getElementById("calendar");
   const top = timeToPosition(start);
   const height = timeToPosition(end) - top;
@@ -215,7 +208,9 @@ function createTaskElement(id, name, start, end) {
   task.style.top = `${top}px`;
   task.style.height = `${height}px`;
   task.style.backgroundColor = getColorById(id);
+  task.title = `Resource: ${resource}`;
   task.textContent = name;
+
   calendar.appendChild(task);
 }
 
@@ -234,5 +229,6 @@ function getColorById(id) {
   ];
   return colors[(id - 1) % colors.length];
 }
+//3
 
 window.onload = loadTasksFromServer;
