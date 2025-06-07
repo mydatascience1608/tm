@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Time Management Calendar</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="column task-input">
+      <h3>Task List</h3>
+      <table id="taskTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Task Name</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Resource</th>
+            <th>❌</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>#</td>
+            <td><input type="text" id="nameInput" /></td>
+            <td><input type="time" id="startInput" /></td>
+            <td><input type="time" id="endInput" /></td>
+            <td><input type="text" id="resourceInput" /></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      <button onclick="addTask()">➕ Thêm Task vào lịch</button>
+    </div>
+
+    <div class="column"></div>
+
+    <div class="column calendar-container">
+      <div class="hour-labels" id="hourLabels"></div>
+      <div class="calendar" id="calendar"></div>
+    </div>
+
+    <script src="Index.js"></script>
+  </body>
+</html>

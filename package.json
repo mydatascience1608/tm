@@ -1,0 +1,15 @@
+{
+  "name": "task-calendar-app",
+  "version": "1.0.0",
+  "description": "A simple task calendar app with data saved to JSON file",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
