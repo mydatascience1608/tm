@@ -1,4 +1,3 @@
-// Màu khác nhau theo ID
 const taskColors = [
   "#007bff",
   "#28a745",
@@ -14,42 +13,29 @@ const taskColors = [
 
 let tasks = [];
 
-// Tạo nhãn giờ cho từng cột
 function createHourLabels() {
-  const hourLabelsAM = document.getElementById("hourLabels-am");
-  const hourLabelsPM = document.getElementById("hourLabels-pm");
-  hourLabelsAM.innerHTML = "";
-  hourLabelsPM.innerHTML = "";
-  // AM: 00:00 - 11:59
-  for (let i = 0; i < 12; i++) {
+  const am = document.getElementById("hourLabels-am");
+  const pm = document.getElementById("hourLabels-pm");
+  [am, pm].forEach((el) => (el.innerHTML = ""));
+
+  for (let i = 0; i < 24; i++) {
     const label = document.createElement("div");
     label.className = "hour-label";
     label.textContent = `${String(i).padStart(2, "0")}:00`;
-    hourLabelsAM.appendChild(label);
-  }
-  // PM: 12:00 - 23:59
-  for (let i = 12; i < 24; i++) {
-    const label = document.createElement("div");
-    label.className = "hour-label";
-    label.textContent = `${String(i).padStart(2, "0")}:00`;
-    hourLabelsPM.appendChild(label);
+    (i < 12 ? am : pm).appendChild(label);
   }
 }
 
-// Đổi time string ("hh:mm") thành phút kể từ 00:00
-function timeToMinutes(timeStr) {
-  const [hour, minute] = timeStr.split(":").map(Number);
-  return hour * 60 + minute;
+function timeToMinutes(t) {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
 }
-// Lấy màu theo id
+
 function getColorById(id) {
   return taskColors[(id - 1) % taskColors.length];
 }
 
-// Thêm task vào lịch sáng (AM) hoặc chiều (PM)
-function createTaskElement(task, calendarId, hourStart) {
-  const calendar = document.getElementById(calendarId);
-  // Chỉ tạo task nếu nằm hoàn toàn trong block AM hoặc PM
+function createTaskElement(task, calendarEl, hourStart) {
   const top = timeToMinutes(task.start) - hourStart * 60;
   const height = timeToMinutes(task.end) - timeToMinutes(task.start);
 
@@ -61,10 +47,9 @@ function createTaskElement(task, calendarId, hourStart) {
   taskDiv.title = `Resource: ${task.resource}`;
   taskDiv.textContent = task.name;
 
-  calendar.appendChild(taskDiv);
+  calendarEl.appendChild(taskDiv);
 }
 
-// Hiển thị bảng task
 function renderTaskTable() {
   const tbody = document.querySelector("#taskTable tbody");
   tbody.innerHTML = `
@@ -78,8 +63,8 @@ function renderTaskTable() {
     </tr>
   `;
 
-  tasks.forEach((task, index) => {
-    task.id = index + 1;
+  tasks.forEach((task, i) => {
+    task.id = i + 1;
     const row = tbody.insertRow();
     row.innerHTML = `
       <td>${task.id}</td>
@@ -87,12 +72,11 @@ function renderTaskTable() {
       <td>${task.start}</td>
       <td>${task.end}</td>
       <td>${task.resource}</td>
-      <td><span class="delete-btn" onclick="deleteTask(${index})">❌</span></td>
+      <td><span class="delete-btn" onclick="deleteTask(${i})">❌</span></td>
     `;
   });
 }
 
-// Hiển thị task lên 2 calendar
 function renderCalendar() {
   const calAM = document.getElementById("calendar-am");
   const calPM = document.getElementById("calendar-pm");
@@ -102,26 +86,32 @@ function renderCalendar() {
   tasks.forEach((task) => {
     const startMin = timeToMinutes(task.start);
     const endMin = timeToMinutes(task.end);
+    const noon = 12 * 60;
 
-    if (startMin < 12 * 60 && endMin <= 12 * 60) {
-      // Chỉ nằm trong AM
-      createTaskElement(task, "calendar-am", 0);
-    } else if (startMin >= 12 * 60 && endMin <= 24 * 60) {
-      // Chỉ nằm trong PM
-      createTaskElement(task, "calendar-pm", 12);
-    } else if (startMin < 12 * 60 && endMin > 12 * 60) {
-      // Nếu task kéo dài qua cả 2 cột, chia làm 2 phần
-      // Phần sáng: 00:00 đến 11:59
-      let amTask = { ...task, end: "12:00" };
-      createTaskElement(amTask, "calendar-am", 0);
-      // Phần chiều: 12:00 đến kết thúc
-      let pmTask = { ...task, start: "12:00" };
-      createTaskElement(pmTask, "calendar-pm", 12);
+    // Nếu task nằm hoàn toàn trong AM
+    if (endMin <= noon) {
+      createTaskElement(task, calAM, 0);
+    }
+    // Nếu task nằm hoàn toàn trong PM
+    else if (startMin >= noon) {
+      createTaskElement(task, calPM, noon);
+    }
+    // Nếu task kéo dài từ AM sang PM
+    else {
+      // Phần AM: từ start đến 12:00
+      createTaskElement({ ...task, end: "12:00" }, calAM, 0);
+      // Phần PM: từ 12:00 đến end
+      createTaskElement({ ...task, start: "12:00" }, calPM, noon);
     }
   });
 }
 
-// Thêm task
+function clearInputs() {
+  ["nameInput", "startInput", "endInput", "resourceInput"].forEach(
+    (id) => (document.getElementById(id).value = "")
+  );
+}
+
 function addTask() {
   const name = document.getElementById("nameInput").value.trim();
   const start = document.getElementById("startInput").value;
@@ -139,21 +129,17 @@ function addTask() {
   }
 
   tasks.push({ id: tasks.length + 1, name, start, end, resource });
-  saveTasksToServer();
   renderTaskTable();
   renderCalendar();
-
-  document.getElementById("nameInput").value = "";
-  document.getElementById("startInput").value = "";
-  document.getElementById("endInput").value = "";
-  document.getElementById("resourceInput").value = "";
+  saveTasksToServer();
+  clearInputs();
 }
 
 function deleteTask(index) {
   tasks.splice(index, 1);
-  saveTasksToServer();
   renderTaskTable();
   renderCalendar();
+  saveTasksToServer();
 }
 
 function loadTasksFromServer() {
