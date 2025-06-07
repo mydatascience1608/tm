@@ -82,9 +82,9 @@ body {
 .calendar {
   position: relative;
   width: 100%;
-  height: 720px;
+  height: 720px; /* 12 tiếng x 60 phút = 720px */
   border: 1px solid #ccc;
-  background: linear-gradient(to bottom, #f9f9f9 0.5px, transparent 0.5px);
+  background: linear-gradient(to bottom, #f9f9f9 59px, transparent 60px);
   background-size: 100% 60px;
   overflow-y: auto;
   flex: 1 1 0;
@@ -92,19 +92,24 @@ body {
 
 .task {
   position: absolute;
-  left: 10px;
-  width: calc(100% - 20px);
-  background-color: rgba(0, 123, 255, 0.6);
-  border: 1px solid #007bff;
-  border-radius: 4px;
-  padding: 4px;
+  left: 5px;
+  width: calc(100% - 10px); /* Thêm khoảng cách để không sát viền */
+  background-color: rgba(0, 123, 255, 0.85); /* Tăng độ đậm màu */
+  border-left: 4px solid #0056b3; /* Nổi bật task */
+  border-radius: 6px;
+  padding: 4px 6px;
   color: #fff;
   font-size: 13px;
-  font-weight: bold;
+  font-weight: 600;
   box-sizing: border-box;
-  z-index: 1;
+  z-index: 10; /* Đảm bảo nằm trên background */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
 }
-
+.task:hover {
+  transform: scale(1.02);
+  background-color: rgba(0, 123, 255, 1);
+}
 .delete-btn {
   color: red;
   cursor: pointer;
