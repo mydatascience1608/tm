@@ -12,122 +12,59 @@ const taskColors = [
   "#e83e8c",
 ];
 
-// Tạo nhãn giờ
-const hourLabels = document.getElementById("hourLabels");
-for (let i = 0; i < 24; i++) {
-  const label = document.createElement("div");
-  label.className = "hour-label";
-  label.textContent = `${String(i).padStart(2, "0")}:00`;
-  hourLabels.appendChild(label);
+let tasks = [];
+
+// Tạo nhãn giờ cho từng cột
+function createHourLabels() {
+  const hourLabelsAM = document.getElementById("hourLabels-am");
+  const hourLabelsPM = document.getElementById("hourLabels-pm");
+  hourLabelsAM.innerHTML = "";
+  hourLabelsPM.innerHTML = "";
+  // AM: 00:00 - 11:59
+  for (let i = 0; i < 12; i++) {
+    const label = document.createElement("div");
+    label.className = "hour-label";
+    label.textContent = `${String(i).padStart(2, "0")}:00`;
+    hourLabelsAM.appendChild(label);
+  }
+  // PM: 12:00 - 23:59
+  for (let i = 12; i < 24; i++) {
+    const label = document.createElement("div");
+    label.className = "hour-label";
+    label.textContent = `${String(i).padStart(2, "0")}:00`;
+    hourLabelsPM.appendChild(label);
+  }
 }
 
-function timeToPosition(timeStr) {
+// Đổi time string ("hh:mm") thành phút kể từ 00:00
+function timeToMinutes(timeStr) {
   const [hour, minute] = timeStr.split(":").map(Number);
   return hour * 60 + minute;
 }
-
-// Tạo task trên calendar
-function createTaskElement(id, name, start, end) {
-  const calendar = document.getElementById("calendar");
-  const top = timeToPosition(start);
-  const height = timeToPosition(end) - top;
-
-  const task = document.createElement("div");
-  task.className = "task";
-  task.dataset.id = id;
-  task.style.top = `${top}px`;
-  task.style.height = `${height}px`;
-  task.style.backgroundColor = taskColors[(id - 1) % taskColors.length];
-  task.textContent = name;
-
-  calendar.appendChild(task);
+// Lấy màu theo id
+function getColorById(id) {
+  return taskColors[(id - 1) % taskColors.length];
 }
 
-// Xóa task trên lịch theo ID
-function deleteTaskById(id) {
-  const calendar = document.getElementById("calendar");
-  const task = calendar.querySelector(`.task[data-id="${id}"]`);
-  if (task) {
-    task.remove();
-  }
+// Thêm task vào lịch sáng (AM) hoặc chiều (PM)
+function createTaskElement(task, calendarId, hourStart) {
+  const calendar = document.getElementById(calendarId);
+  // Chỉ tạo task nếu nằm hoàn toàn trong block AM hoặc PM
+  const top = timeToMinutes(task.start) - hourStart * 60;
+  const height = timeToMinutes(task.end) - timeToMinutes(task.start);
+
+  const taskDiv = document.createElement("div");
+  taskDiv.className = "task";
+  taskDiv.style.top = `${top}px`;
+  taskDiv.style.height = `${height}px`;
+  taskDiv.style.backgroundColor = getColorById(task.id);
+  taskDiv.title = `Resource: ${task.resource}`;
+  taskDiv.textContent = task.name;
+
+  calendar.appendChild(taskDiv);
 }
 
-// Cập nhật lại ID trong bảng và calendar sau khi xóa
-function updateTableAndCalendar() {
-  const rows = [...document.querySelectorAll("#taskTable tbody tr")].slice(1); // Bỏ dòng nhập
-  const calendar = document.getElementById("calendar");
-  calendar.innerHTML = "";
-
-  rows.forEach((row, index) => {
-    const id = index + 1;
-    row.cells[0].textContent = id;
-    row.cells[5].innerHTML = `<span class="delete-btn" onclick="deleteRow(this)">❌</span>`;
-    row.dataset.id = id;
-
-    const name = row.cells[1].textContent;
-    const start = row.cells[2].textContent;
-    const end = row.cells[3].textContent;
-
-    createTaskElement(id, name, start, end);
-  });
-}
-
-// Xóa dòng trong bảng
-function deleteRow(btn) {
-  const row = btn.closest("tr");
-  row.remove();
-  updateTableAndCalendar();
-}
-
-// Thêm task
-function addTask() {
-  const name = document.getElementById("nameInput").value.trim();
-  const start = document.getElementById("startInput").value;
-  const end = document.getElementById("endInput").value;
-  const resource = document.getElementById("resourceInput").value.trim();
-
-  if (!name || !start || !end || !resource) {
-    alert("Vui lòng nhập đầy đủ thông tin!");
-    return;
-  }
-
-  if (timeToPosition(end) <= timeToPosition(start)) {
-    alert("Thời gian kết thúc phải sau thời gian bắt đầu!");
-    return;
-  }
-
-  const id = tasks.length + 1;
-  tasks.push({ id, name, start, end, resource });
-  saveTasksToServer();
-  renderTaskTable();
-  renderCalendar();
-
-  document.getElementById("nameInput").value = "";
-  document.getElementById("startInput").value = "";
-  document.getElementById("endInput").value = "";
-  document.getElementById("resourceInput").value = "";
-}
-
-let tasks = [];
-
-function loadTasksFromServer() {
-  fetch("/tasks")
-    .then((res) => res.json())
-    .then((data) => {
-      tasks = data;
-      renderTaskTable();
-      renderCalendar();
-    });
-}
-
-function saveTasksToServer() {
-  fetch("/tasks", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(tasks),
-  });
-}
-
+// Hiển thị bảng task
 function renderTaskTable() {
   const tbody = document.querySelector("#taskTable tbody");
   tbody.innerHTML = `
@@ -155,15 +92,36 @@ function renderTaskTable() {
   });
 }
 
+// Hiển thị task lên 2 calendar
 function renderCalendar() {
-  const calendar = document.getElementById("calendar");
-  calendar.innerHTML = "";
+  const calAM = document.getElementById("calendar-am");
+  const calPM = document.getElementById("calendar-pm");
+  calAM.innerHTML = "";
+  calPM.innerHTML = "";
 
   tasks.forEach((task) => {
-    createTaskElement(task.id, task.name, task.start, task.end, task.resource);
+    const startMin = timeToMinutes(task.start);
+    const endMin = timeToMinutes(task.end);
+
+    if (startMin < 12 * 60 && endMin <= 12 * 60) {
+      // Chỉ nằm trong AM
+      createTaskElement(task, "calendar-am", 0);
+    } else if (startMin >= 12 * 60 && endMin <= 24 * 60) {
+      // Chỉ nằm trong PM
+      createTaskElement(task, "calendar-pm", 12);
+    } else if (startMin < 12 * 60 && endMin > 12 * 60) {
+      // Nếu task kéo dài qua cả 2 cột, chia làm 2 phần
+      // Phần sáng: 00:00 đến 11:59
+      let amTask = { ...task, end: "12:00" };
+      createTaskElement(amTask, "calendar-am", 0);
+      // Phần chiều: 12:00 đến kết thúc
+      let pmTask = { ...task, start: "12:00" };
+      createTaskElement(pmTask, "calendar-pm", 12);
+    }
   });
 }
 
+// Thêm task
 function addTask() {
   const name = document.getElementById("nameInput").value.trim();
   const start = document.getElementById("startInput").value;
@@ -172,6 +130,11 @@ function addTask() {
 
   if (!name || !start || !end || !resource) {
     alert("Vui lòng nhập đầy đủ thông tin!");
+    return;
+  }
+
+  if (timeToMinutes(end) <= timeToMinutes(start)) {
+    alert("Thời gian kết thúc phải sau thời gian bắt đầu!");
     return;
   }
 
@@ -193,42 +156,25 @@ function deleteTask(index) {
   renderCalendar();
 }
 
-function timeToPosition(timeStr) {
-  const [hour, minute] = timeStr.split(":").map(Number);
-  return hour * 60 + minute;
+function loadTasksFromServer() {
+  fetch("/tasks")
+    .then((res) => res.json())
+    .then((data) => {
+      tasks = data;
+      renderTaskTable();
+      renderCalendar();
+    });
 }
 
-function createTaskElement(id, name, start, end, resource) {
-  const calendar = document.getElementById("calendar");
-  const top = timeToPosition(start);
-  const height = timeToPosition(end) - top;
-
-  const task = document.createElement("div");
-  task.className = "task";
-  task.style.top = `${top}px`;
-  task.style.height = `${height}px`;
-  task.style.backgroundColor = getColorById(id);
-  task.title = `Resource: ${resource}`;
-  task.textContent = name;
-
-  calendar.appendChild(task);
+function saveTasksToServer() {
+  fetch("/tasks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(tasks),
+  });
 }
 
-function getColorById(id) {
-  const colors = [
-    "#007bff",
-    "#28a745",
-    "#dc3545",
-    "#ffc107",
-    "#17a2b8",
-    "#6f42c1",
-    "#fd7e14",
-    "#20c997",
-    "#6610f2",
-    "#e83e8c",
-  ];
-  return colors[(id - 1) % colors.length];
-}
-//3
-
-window.onload = loadTasksFromServer;
+window.onload = function () {
+  createHourLabels();
+  loadTasksFromServer();
+};
