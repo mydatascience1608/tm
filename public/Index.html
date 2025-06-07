@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div class="column task-input">
+    <div class="column task-input resizable">
       <h3>Task List</h3>
       <table id="taskTable">
         <thead>
@@ -33,11 +33,14 @@
       <button onclick="addTask()">➕ Thêm Task vào lịch</button>
     </div>
 
-    <div class="column"></div>
+    <div class="column calendar-am-container resizable">
+      <div class="hour-labels" id="hourLabels-am"></div>
+      <div class="calendar" id="calendar-am"></div>
+    </div>
 
-    <div class="column calendar-container">
-      <div class="hour-labels" id="hourLabels"></div>
-      <div class="calendar" id="calendar"></div>
+    <div class="column calendar-pm-container resizable">
+      <div class="hour-labels" id="hourLabels-pm"></div>
+      <div class="calendar" id="calendar-pm"></div>
     </div>
 
     <script src="Index.js"></script>
