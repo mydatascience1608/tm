@@ -1,3 +1,4 @@
+// Màu sắc cho từng task theo ID
 const taskColors = [
   "#007bff",
   "#28a745",
@@ -13,58 +14,87 @@ const taskColors = [
 
 let tasks = [];
 
-function createHourLabels() {
-  const am = document.getElementById("hourLabels-am");
-  const pm = document.getElementById("hourLabels-pm");
-  [am, pm].forEach((el) => (el.innerHTML = ""));
+window.onload = loadTasksFromServer;
 
-  for (let i = 0; i < 24; i++) {
-    const label = document.createElement("div");
-    label.className = "hour-label";
-    label.textContent = `${String(i).padStart(2, "0")}:00`;
-    (i < 12 ? am : pm).appendChild(label);
-  }
+// Chuyển thời gian thành vị trí (đơn vị phút)
+function timeToPosition(timeStr) {
+  const [hour, minute] = timeStr.split(":").map(Number);
+  return hour * 60 + minute;
 }
 
-function timeToMinutes(t) {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
-}
-
+// Trả về màu sắc tương ứng ID
 function getColorById(id) {
   return taskColors[(id - 1) % taskColors.length];
 }
 
-function createTaskElement(task, calendarEl, hourStart) {
-  const top = timeToMinutes(task.start) - hourStart * 60;
-  const height = timeToMinutes(task.end) - timeToMinutes(task.start);
+// Tạo nhãn giờ dọc
+function generateHourLabels() {
+  const hourLabels = document.getElementById("hourLabels");
+  for (let i = 0; i < 24; i++) {
+    const label = document.createElement("div");
+    label.className = "hour-label";
+    label.textContent = `${String(i).padStart(2, "0")}:00`;
+    hourLabels.appendChild(label);
+  }
+}
+generateHourLabels();
 
-  const taskDiv = document.createElement("div");
-  taskDiv.className = "task";
-  taskDiv.style.top = `${top}px`;
-  taskDiv.style.height = `${height}px`;
-  taskDiv.style.backgroundColor = getColorById(task.id);
-  taskDiv.title = `Resource: ${task.resource}`;
-  taskDiv.textContent = task.name;
+// Tạo một task trên lịch
+function createTaskElement(id, name, start, end, resource) {
+  const calendar = document.getElementById("calendar");
+  const top = timeToPosition(start);
+  const height = timeToPosition(end) - top;
 
-  calendarEl.appendChild(taskDiv);
+  const task = document.createElement("div");
+  task.className = "task";
+  task.style.top = `${top}px`;
+  task.style.height = `${height}px`;
+  task.style.backgroundColor = getColorById(id);
+  task.title = `Resource: ${resource}`;
+  task.textContent = name;
+
+  calendar.appendChild(task);
 }
 
+// Tải task từ server
+function loadTasksFromServer() {
+  fetch("/tasks")
+    .then((res) => res.json())
+    .then((data) => {
+      tasks = data;
+      renderTaskTable();
+      renderCalendar();
+    });
+}
+
+// Gửi task lên server
+function saveTasksToServer() {
+  fetch("/tasks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(tasks),
+  });
+}
+
+// Hiển thị bảng task
 function renderTaskTable() {
   const tbody = document.querySelector("#taskTable tbody");
-  tbody.innerHTML = `
-    <tr>
-      <td>#</td>
-      <td><input type="text" id="nameInput" /></td>
-      <td><input type="time" id="startInput" /></td>
-      <td><input type="time" id="endInput" /></td>
-      <td><input type="text" id="resourceInput" /></td>
-      <td></td>
-    </tr>
+  tbody.innerHTML = "";
+
+  // Dòng nhập task mới
+  const inputRow = tbody.insertRow();
+  inputRow.innerHTML = `
+    <td>#</td>
+    <td><input type="text" id="nameInput" /></td>
+    <td><input type="time" id="startInput" /></td>
+    <td><input type="time" id="endInput" /></td>
+    <td><input type="text" id="resourceInput" /></td>
+    <td><button onclick="addTask()">➕</button></td>
   `;
 
-  tasks.forEach((task, i) => {
-    task.id = i + 1;
+  // Các dòng task
+  tasks.forEach((task, index) => {
+    task.id = index + 1;
     const row = tbody.insertRow();
     row.innerHTML = `
       <td>${task.id}</td>
@@ -72,46 +102,21 @@ function renderTaskTable() {
       <td>${task.start}</td>
       <td>${task.end}</td>
       <td>${task.resource}</td>
-      <td><span class="delete-btn" onclick="deleteTask(${i})">❌</span></td>
+      <td><button onclick="deleteTask(${index})">❌</button></td>
     `;
   });
 }
 
+// Hiển thị task lên lịch
 function renderCalendar() {
-  const calAM = document.getElementById("calendar-am");
-  const calPM = document.getElementById("calendar-pm");
-  calAM.innerHTML = "";
-  calPM.innerHTML = "";
-
+  const calendar = document.getElementById("calendar");
+  calendar.innerHTML = "";
   tasks.forEach((task) => {
-    const startMin = timeToMinutes(task.start);
-    const endMin = timeToMinutes(task.end);
-    const noon = 12 * 60;
-
-    // Nếu task nằm hoàn toàn trong AM
-    if (endMin <= noon) {
-      createTaskElement(task, calAM, 0);
-    }
-    // Nếu task nằm hoàn toàn trong PM
-    else if (startMin >= noon) {
-      createTaskElement(task, calPM, noon);
-    }
-    // Nếu task kéo dài từ AM sang PM
-    else {
-      // Phần AM: từ start đến 12:00
-      createTaskElement({ ...task, end: "12:00" }, calAM, 0);
-      // Phần PM: từ 12:00 đến end
-      createTaskElement({ ...task, start: "12:00" }, calPM, noon);
-    }
+    createTaskElement(task.id, task.name, task.start, task.end, task.resource);
   });
 }
 
-function clearInputs() {
-  ["nameInput", "startInput", "endInput", "resourceInput"].forEach(
-    (id) => (document.getElementById(id).value = "")
-  );
-}
-
+// Thêm task mới
 function addTask() {
   const name = document.getElementById("nameInput").value.trim();
   const start = document.getElementById("startInput").value;
@@ -123,44 +128,27 @@ function addTask() {
     return;
   }
 
-  if (timeToMinutes(end) <= timeToMinutes(start)) {
+  if (timeToPosition(end) <= timeToPosition(start)) {
     alert("Thời gian kết thúc phải sau thời gian bắt đầu!");
     return;
   }
 
   tasks.push({ id: tasks.length + 1, name, start, end, resource });
+  saveTasksToServer();
   renderTaskTable();
   renderCalendar();
-  saveTasksToServer();
-  clearInputs();
+
+  // Reset form
+  document.getElementById("nameInput").value = "";
+  document.getElementById("startInput").value = "";
+  document.getElementById("endInput").value = "";
+  document.getElementById("resourceInput").value = "";
 }
 
+// Xóa task
 function deleteTask(index) {
   tasks.splice(index, 1);
+  saveTasksToServer();
   renderTaskTable();
   renderCalendar();
-  saveTasksToServer();
 }
-
-function loadTasksFromServer() {
-  fetch("/tasks")
-    .then((res) => res.json())
-    .then((data) => {
-      tasks = data;
-      renderTaskTable();
-      renderCalendar();
-    });
-}
-
-function saveTasksToServer() {
-  fetch("/tasks", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(tasks),
-  });
-}
-
-window.onload = function () {
-  createHourLabels();
-  loadTasksFromServer();
-};
